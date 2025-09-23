@@ -10,6 +10,11 @@ const AyurvedicBlockchainSystem = () => {
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedHerb, setSelectedHerb] = useState(null);
   const [animatedSection, setAnimatedSection] = useState(0);
+  const [currentUser, setCurrentUser] = useState(null);
+  const [showLogin, setShowLogin] = useState(false);
+  const [loginForm, setLoginForm] = useState({ role: 'farmer', name: '', wallet: '' });
+  const [customFarmers, setCustomFarmers] = useState([]);
+  const [farmerForm, setFarmerForm] = useState({ id: '', name: '', region: '', wallet: '', points: 0, totalTokens: 0, badges: '' });
 
   // Smart Contract Components
   const smartContractCode = `
@@ -264,12 +269,161 @@ contract AyurvedicHerbTraceability {
     }
   ];
 
+  // Sample farmers for recognition/leaderboard
+  const sampleFarmers = [
+    {
+      id: 'F-001',
+      name: 'Ravi Kumar',
+      region: 'Karnataka Western Ghats',
+      wallet: '0x742d35Cc6634C0532925a3b8D4C7C5E5E02b',
+      points: 1580,
+      totalTokens: 1120,
+      badges: ['Premium+ Quality', 'Organic Certified', 'On-time Delivery']
+    },
+    {
+      id: 'F-002',
+      name: 'Lakshmi Nair',
+      region: 'Kerala Backwaters',
+      wallet: '0x8e2f46B9d3a5C7f1E8b4A6c9D2e5F8b1C4d7E0a3',
+      points: 1460,
+      totalTokens: 980,
+      badges: ['Fair Trade', 'AYUSH Approved']
+    },
+    {
+      id: 'F-003',
+      name: 'Suresh Patel',
+      region: 'Madhya Pradesh Forests',
+      wallet: '0x9c1e7A11a2b4cC3dD4e5F6a7B8c9D0e1F2a3B4c5',
+      points: 1210,
+      totalTokens: 760,
+      badges: ['Sustainable Farming', 'Innovation Bonus']
+    },
+    {
+      id: 'F-004',
+      name: 'Anita Sharma',
+      region: 'Himachal Pradesh Hills',
+      wallet: '0xA1b2C3d4E5f67890aBcDeF1234567890aBCdEf12',
+      points: 1325,
+      totalTokens: 840,
+      badges: ['Premium Quality', 'Cold Chain Maintainer']
+    },
+    {
+      id: 'F-005',
+      name: 'Mahesh Yadav',
+      region: 'Rajasthan Aravalli',
+      wallet: '0xB2c3D4e5F6a7b8C9d0E1F2a3B4c5D6e7F8091a2B',
+      points: 990,
+      totalTokens: 540,
+      badges: ['Community Mentor']
+    }
+  ];
+
+  const findFarmer = (user) => {
+    if (!user) return null;
+    return (
+      combinedFarmers().find((f) => (f.wallet || '').toLowerCase() === (user.wallet || '').toLowerCase()) ||
+      combinedFarmers().find((f) => (f.name || '').toLowerCase() === (user.name || '').toLowerCase()) ||
+      null
+    );
+  };
+
+  const myBadges = (user) => {
+    const f = findFarmer(user);
+    return f ? f.badges : [];
+  };
+
+  const myPoints = (user) => {
+    const f = findFarmer(user);
+    return f ? f.points : 0;
+  };
+
+  const myTokens = (user) => {
+    const f = findFarmer(user);
+    return f ? f.totalTokens : 0;
+  };
+
+  const combinedFarmers = () => {
+    const map = new Map();
+    [...sampleFarmers, ...customFarmers].forEach((f) => {
+      const key = ((f.wallet && f.wallet.toLowerCase()) || (f.id && f.id.toLowerCase()) || (f.name && f.name.toLowerCase()));
+      if (key) map.set(key, f);
+    });
+    return Array.from(map.values());
+  };
+
+  const handleFarmerSubmit = (e) => {
+    e.preventDefault();
+    const normalized = {
+      id: farmerForm.id || `CF-${Date.now()}`,
+      name: (farmerForm.name || '').trim(),
+      region: (farmerForm.region || '').trim() || 'Unknown Region',
+      wallet: (farmerForm.wallet || '').trim(),
+      points: Number(farmerForm.points) || 0,
+      totalTokens: Number(farmerForm.totalTokens) || 0,
+      badges: (farmerForm.badges || '').split(',').map((b) => b.trim()).filter(Boolean)
+    };
+    if (!normalized.name || !normalized.wallet) return;
+
+    setCustomFarmers((prev) => {
+      const next = [...prev];
+      const idx = next.findIndex((f) => (f.wallet || '').toLowerCase() === normalized.wallet.toLowerCase());
+      if (idx >= 0) {
+        next[idx] = { ...next[idx], ...normalized };
+      } else {
+        next.push(normalized);
+      }
+      try {
+        localStorage.setItem('ayush_custom_farmers', JSON.stringify(next));
+      } catch (_) {}
+      return next;
+    });
+
+    setFarmerForm({ id: '', name: '', region: '', wallet: '', points: 0, totalTokens: 0, badges: '' });
+  };
+
   useEffect(() => {
     const interval = setInterval(() => {
       setAnimatedSection((prev) => (prev + 1) % systemComponents.length);
     }, 3000);
     return () => clearInterval(interval);
   }, []);
+
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('ayush_current_user');
+      if (stored) {
+        setCurrentUser(JSON.parse(stored));
+      }
+      const storedFarmers = localStorage.getItem('ayush_custom_farmers');
+      if (storedFarmers) {
+        setCustomFarmers(JSON.parse(storedFarmers));
+      }
+    } catch (_) {
+      // ignore
+    }
+  }, []);
+
+  const handleLoginSubmit = (e) => {
+    e.preventDefault();
+    if (!loginForm.name || !loginForm.wallet) return;
+    const user = { ...loginForm };
+    setCurrentUser(user);
+    try {
+      localStorage.setItem('ayush_current_user', JSON.stringify(user));
+    } catch (_) {
+      // ignore
+    }
+    setShowLogin(false);
+  };
+
+  const handleLogout = () => {
+    setCurrentUser(null);
+    try {
+      localStorage.removeItem('ayush_current_user');
+    } catch (_) {
+      // ignore
+    }
+  };
 
   const getColorClasses = (color) => {
     const colors = {
@@ -322,6 +476,27 @@ contract AyurvedicHerbTraceability {
                 <Shield className="w-4 h-4 text-blue-600 mr-2" />
                 <span className="text-sm font-medium text-blue-600">Blockchain Secured</span>
               </div>
+              {!currentUser ? (
+                <button
+                  onClick={() => setShowLogin(true)}
+                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg shadow hover:opacity-90"
+                >
+                  Login
+                </button>
+              ) : (
+                <div className="flex items-center space-x-3 bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
+                  <div className="text-sm">
+                    <div className="font-medium text-gray-800">{currentUser.name}</div>
+                    <div className="text-xs text-gray-500 capitalize">{currentUser.role}</div>
+                  </div>
+                  <button
+                    onClick={handleLogout}
+                    className="text-xs px-3 py-1 bg-white border border-gray-200 rounded hover:bg-gray-50"
+                  >
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -337,6 +512,7 @@ contract AyurvedicHerbTraceability {
           <TabButton id="tracking" label="RFID/NFC Tracking" active={activeTab === 'tracking'} onClick={setActiveTab} />
           <TabButton id="supply-chain" label="Supply Chain" active={activeTab === 'supply-chain'} onClick={setActiveTab} />
           <TabButton id="tokens" label="Token System" active={activeTab === 'tokens'} onClick={setActiveTab} />
+          <TabButton id="recognition" label="Farmer Recognition" active={activeTab === 'recognition'} onClick={setActiveTab} />
         </div>
 
         {/* System Overview Tab */}
@@ -886,7 +1062,162 @@ contract AyurvedicHerbTraceability {
             </div>
           </div>
         )}
+
+        {/* Farmer Recognition Tab */}
+        {activeTab === 'recognition' && (
+          <div className="space-y-6">
+            <div className="bg-white rounded-xl shadow-lg p-6">
+              <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
+                <Award className="w-6 h-6 mr-3 text-yellow-600" />
+                Farmer Recognition & Leaderboard
+              </h2>
+
+              <div className="grid lg:grid-cols-3 gap-6">
+                <div className="lg:col-span-2 space-y-4">
+                  <h3 className="text-xl font-semibold text-gray-800">Top Farmers</h3>
+                  <div className="space-y-3">
+                    {combinedFarmers().sort((a, b) => (b.points||0) - (a.points||0)).slice(0, 5).map((farmer, idx) => (
+                      <div key={farmer.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-blue-50 rounded-lg border">
+                        <div className="flex items-center space-x-3">
+                          <div className="w-8 h-8 rounded-full bg-green-600 text-white flex items-center justify-center text-sm font-bold">
+                            {idx + 1}
+                          </div>
+                          <div>
+                            <div className="font-medium text-gray-800">{farmer.name}</div>
+                            <div className="text-xs text-gray-500">{farmer.region}</div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-3">
+                          <div className="text-sm text-gray-700">
+                            {farmer.badges.map((b, i) => (
+                              <span key={i} className="inline-block mr-2 mb-1 px-2 py-0.5 bg-yellow-100 text-yellow-700 rounded-full text-xs">
+                                {b}
+                              </span>
+                            ))}
+                          </div>
+                          <div className="text-right">
+                            <div className="text-green-700 font-semibold">{farmer.points} pts</div>
+                            <div className="text-xs text-gray-500">{farmer.totalTokens} AHT</div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-xl font-semibold text-gray-800">My Profile</h3>
+                  {!currentUser ? (
+                    <div className="p-4 border rounded-lg bg-gray-50">
+                      <p className="text-sm text-gray-600 mb-3">Login as a farmer to view your profile and badges.</p>
+                      <button onClick={() => setShowLogin(true)} className="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm">Login</button>
+                    </div>
+                  ) : (
+                    <div className="p-4 border rounded-lg bg-gradient-to-br from-green-50 to-blue-50">
+                      <div className="mb-2">
+                        <div className="font-medium text-gray-800">{currentUser.name}</div>
+                        <div className="text-xs text-gray-500 break-all">{currentUser.wallet}</div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-3 text-sm">
+                        <div className="p-3 bg-white rounded border">
+                          <div className="text-gray-500">Role</div>
+                          <div className="font-medium capitalize">{currentUser.role}</div>
+                        </div>
+                        <div className="p-3 bg-white rounded border">
+                          <div className="text-gray-500">Badges</div>
+                          <div className="font-medium">{myBadges(currentUser).length}</div>
+                        </div>
+                        <div className="p-3 bg-white rounded border">
+                          <div className="text-gray-500">Points</div>
+                          <div className="font-medium">{myPoints(currentUser)}</div>
+                        </div>
+                        <div className="p-3 bg-white rounded border">
+                          <div className="text-gray-500">Total AHT</div>
+                          <div className="font-medium">{myTokens(currentUser)} AHT</div>
+                        </div>
+                      </div>
+                      <div className="mt-3">
+                        {myBadges(currentUser).map((b, i) => (
+                          <span key={i} className="inline-block mr-2 mb-2 px-2 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs">
+                            {b}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  <div className="pt-2 border-t">
+                    <h4 className="font-medium text-gray-800 mb-2">Add / Update Farmer</h4>
+                    <form onSubmit={handleFarmerSubmit} className="space-y-2 text-sm">
+                      <input className="w-full border rounded px-3 py-2" placeholder="Name" value={farmerForm.name} onChange={(e)=>setFarmerForm({...farmerForm, name:e.target.value})} />
+                      <input className="w-full border rounded px-3 py-2" placeholder="Region" value={farmerForm.region} onChange={(e)=>setFarmerForm({...farmerForm, region:e.target.value})} />
+                      <input className="w-full border rounded px-3 py-2" placeholder="Wallet (0x...)" value={farmerForm.wallet} onChange={(e)=>setFarmerForm({...farmerForm, wallet:e.target.value})} />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input className="w-full border rounded px-3 py-2" placeholder="Points" type="number" value={farmerForm.points} onChange={(e)=>setFarmerForm({...farmerForm, points:e.target.value})} />
+                        <input className="w-full border rounded px-3 py-2" placeholder="Total Tokens (AHT)" type="number" value={farmerForm.totalTokens} onChange={(e)=>setFarmerForm({...farmerForm, totalTokens:e.target.value})} />
+                      </div>
+                      <input className="w-full border rounded px-3 py-2" placeholder="Badges (comma separated)" value={farmerForm.badges} onChange={(e)=>setFarmerForm({...farmerForm, badges:e.target.value})} />
+                      <button onClick={handleFarmerSubmit} className="w-full py-2 bg-green-600 text-white rounded hover:bg-green-700">Save</button>
+                    </form>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* Login Modal */}
+      {showLogin && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-lg font-semibold text-gray-800">Login</h3>
+              <button onClick={() => setShowLogin(false)} className="text-gray-500 hover:text-gray-700">✕</button>
+            </div>
+            <form onSubmit={handleLoginSubmit} className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <select
+                  value={loginForm.role}
+                  onChange={(e) => setLoginForm({ ...loginForm, role: e.target.value })}
+                  className="w-full border rounded-lg px-3 py-2"
+                >
+                  <option value="farmer">Farmer</option>
+                  <option value="processor">Processor</option>
+                  <option value="buyer">Buyer</option>
+                  <option value="auditor">Auditor</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Full Name</label>
+                <input
+                  type="text"
+                  value={loginForm.name}
+                  onChange={(e) => setLoginForm({ ...loginForm, name: e.target.value })}
+                  placeholder="e.g., Ravi Kumar"
+                  className="w-full border rounded-lg px-3 py-2"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Wallet Address</label>
+                <input
+                  type="text"
+                  value={loginForm.wallet}
+                  onChange={(e) => setLoginForm({ ...loginForm, wallet: e.target.value })}
+                  placeholder="0x..."
+                  className="w-full border rounded-lg px-3 py-2"
+                  required
+                />
+              </div>
+              <button type="submit" className="w-full py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg">
+                Continue
+              </button>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Footer */}
       <div className="bg-gray-800 text-white py-8 mt-12">

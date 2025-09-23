@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Leaf, Shield, Cpu, Radio, Database, Users, Coins, MapPin, 
   QrCode, Eye, CheckCircle, AlertTriangle, Clock, Award,
@@ -15,6 +16,7 @@ const AyurvedicBlockchainSystem = () => {
   const [loginForm, setLoginForm] = useState({ role: 'farmer', name: '', wallet: '' });
   const [customFarmers, setCustomFarmers] = useState([]);
   const [farmerForm, setFarmerForm] = useState({ id: '', name: '', region: '', wallet: '', points: 0, totalTokens: 0, badges: '' });
+  const [lang, setLang] = useState('en');
 
   // Smart Contract Components
   const smartContractCode = `
@@ -398,6 +400,8 @@ contract AyurvedicHerbTraceability {
       if (storedFarmers) {
         setCustomFarmers(JSON.parse(storedFarmers));
       }
+      const storedLang = localStorage.getItem('ayush_lang');
+      if (storedLang) setLang(storedLang);
     } catch (_) {
       // ignore
     }
@@ -437,6 +441,30 @@ contract AyurvedicHerbTraceability {
     return colors[color] || colors.blue;
   };
 
+  const t = (key) => {
+    const dict = {
+      en: {
+        systemActive: 'System Active',
+        blockchainSecured: 'Blockchain Secured',
+        quickLogin: 'Quick Login',
+        loginPage: 'Login Page',
+      },
+      hi: {
+        systemActive: 'सिस्टम सक्रिय',
+        blockchainSecured: 'ब्लॉकचेन सुरक्षित',
+        quickLogin: 'त्वरित लॉगिन',
+        loginPage: 'लॉगिन पेज',
+      },
+    };
+    return (dict[lang] && dict[lang][key]) || dict.en[key] || key;
+  };
+
+  const toggleLang = () => {
+    const next = lang === 'en' ? 'hi' : 'en';
+    setLang(next);
+    try { localStorage.setItem('ayush_lang', next); } catch (_) {}
+  };
+
   const TabButton = ({ id, label, active, onClick }) => (
     <button
       onClick={() => onClick(id)}
@@ -461,28 +489,38 @@ contract AyurvedicHerbTraceability {
                 <Leaf className="w-8 h-8 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
-                  Ayurvedic Herb Blockchain System
-                </h1>
+                <Link to="/" className="block">
+                  <h1 className="text-3xl font-bold bg-gradient-to-r from-green-600 to-blue-600 bg-clip-text text-transparent">
+                    Ayurvedic Herb Blockchain System
+                  </h1>
+                </Link>
                 <p className="text-gray-600">Complete Traceability Solution with AI & Blockchain</p>
               </div>
             </div>
             <div className="flex items-center space-x-4">
               <div className="flex items-center bg-green-100 px-4 py-2 rounded-full">
                 <Activity className="w-4 h-4 text-green-600 mr-2" />
-                <span className="text-sm font-medium text-green-600">System Active</span>
+                <span className="text-sm font-medium text-green-600">{t('systemActive')}</span>
               </div>
               <div className="flex items-center bg-blue-100 px-4 py-2 rounded-full">
                 <Shield className="w-4 h-4 text-blue-600 mr-2" />
-                <span className="text-sm font-medium text-blue-600">Blockchain Secured</span>
+                <span className="text-sm font-medium text-blue-600">{t('blockchainSecured')}</span>
               </div>
+              <button onClick={toggleLang} className="px-3 py-2 bg-white border border-gray-200 rounded text-sm hover:bg-gray-50">
+                {lang === 'en' ? 'हिंदी' : 'EN'}
+              </button>
               {!currentUser ? (
-                <button
-                  onClick={() => setShowLogin(true)}
-                  className="px-4 py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg shadow hover:opacity-90"
-                >
-                  Login
-                </button>
+                <div className="flex items-center space-x-2">
+                  <button
+                    onClick={() => setShowLogin(true)}
+                    className="px-3 py-2 bg-gray-100 text-gray-800 rounded-lg border hover:bg-gray-200 text-sm"
+                  >
+                    {t('quickLogin')}
+                  </button>
+                  <Link to="/login" className="px-4 py-2 bg-gradient-to-r from-green-500 to-blue-500 text-white rounded-lg shadow hover:opacity-90">
+                    {t('loginPage')}
+                  </Link>
+                </div>
               ) : (
                 <div className="flex items-center space-x-3 bg-gray-50 border border-gray-200 px-3 py-2 rounded-lg">
                   <div className="text-sm">
@@ -512,7 +550,7 @@ contract AyurvedicHerbTraceability {
           <TabButton id="tracking" label="RFID/NFC Tracking" active={activeTab === 'tracking'} onClick={setActiveTab} />
           <TabButton id="supply-chain" label="Supply Chain" active={activeTab === 'supply-chain'} onClick={setActiveTab} />
           <TabButton id="tokens" label="Token System" active={activeTab === 'tokens'} onClick={setActiveTab} />
-          <TabButton id="recognition" label="Farmer Recognition" active={activeTab === 'recognition'} onClick={setActiveTab} />
+          <TabButton id="recognition" label="Leaderboard" active={activeTab === 'recognition'} onClick={setActiveTab} />
         </div>
 
         {/* System Overview Tab */}
@@ -1063,13 +1101,13 @@ contract AyurvedicHerbTraceability {
           </div>
         )}
 
-        {/* Farmer Recognition Tab */}
+        {/* Leaderboard Tab */}
         {activeTab === 'recognition' && (
           <div className="space-y-6">
             <div className="bg-white rounded-xl shadow-lg p-6">
               <h2 className="text-2xl font-bold text-gray-800 mb-6 flex items-center">
                 <Award className="w-6 h-6 mr-3 text-yellow-600" />
-                Farmer Recognition & Leaderboard
+                Leaderboard
               </h2>
 
               <div className="grid lg:grid-cols-3 gap-6">

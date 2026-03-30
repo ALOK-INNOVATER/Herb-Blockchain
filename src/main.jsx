@@ -18,11 +18,11 @@ const router = createBrowserRouter([
   { path: "/", element: <App /> },
   { path: "/login/*", element: <SignInPage /> },
   { path: "/sign-up/*", element: <SignUpPage /> },
-]);
+], { basename: "/Herb-Blockchain/" });
 
 ReactDOM.createRoot(document.getElementById("root")).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/" afterSignInUrl="/" afterSignUpUrl="/">
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY} afterSignOutUrl="/Herb-Blockchain/" afterSignInUrl="/Herb-Blockchain/" afterSignUpUrl="/Herb-Blockchain/">
       <RouterProvider router={router} />
     </ClerkProvider>
   </React.StrictMode>

@@ -179,7 +179,11 @@ app.get('/api/ai/history', async (req, res) => {
 });
 
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-  console.log(`🚀 Herb-Blockchain API Server running on http://localhost:${PORT}`);
-  console.log(`📦 MongoDB URI: ${MONGO_URI}`);
-});
+if (process.env.NODE_ENV !== 'production') {
+  app.listen(PORT, () => {
+    console.log(`🚀 Herb-Blockchain API Server running on http://localhost:${PORT}`);
+    console.log(`📦 MongoDB URI: ${MONGO_URI}`);
+  });
+}
+
+export default app;
